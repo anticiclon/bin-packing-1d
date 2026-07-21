@@ -1,2 +1,0 @@
-dataset,n_skus_requested,seed,n_skus_actual,n_blocks,isolated_pct,bfd_bins,bfd_vol,eta_bfd,bfd_time,cg_attempted,cg_iters,cg_cols,z_lp,cg_time,cg_converged,z_ip,rip_time,gap_bfd_lp,gap_lp_ip
-DS-1,1556,0,1556,11830,1.96,8480,14486827800.0,74.3212,1.78,True,2916,106607,14166101333.33,236125.7,True,,,,
