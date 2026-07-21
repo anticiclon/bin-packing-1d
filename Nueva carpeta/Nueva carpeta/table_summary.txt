@@ -1,0 +1,16 @@
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+Dataset & $|\mathcal{S}|$ & $|\mathcal{B}|$ & Max $|\mathcal{S}|$ & Max $|\mathcal{B}|$ & Gap BFD--LP (\%) & $\eta_{\text{BFD}}$ (\%) \\
+\midrule
+DS-1 & 1{,}556 & 11{,}830 & 1{,}556 & 11{,}830 & 1.97 $\pm$ 0.96 & 73.16 \\
+DS-2 & 94{,}556 & 198{,}640 & 2{,}000 & 4{,}181 & 23.25 $\pm$ 3.63 & 59.14 \\
+DS-3 & 503{,}931 & 553{,}822 & 2{,}000 & 2{,}198 & 20.92 $\pm$ 3.37 & 61.34 \\
+DS-4 & 1{,}520{,}442 & 1{,}725{,}931 & 2{,}000 & 2{,}280 & 45.57 $\pm$ 3.54 & 45.72 \\
+\bottomrule
+\end{tabular}
+\caption{Summary by dataset. Max $|\mathcal{S}|$ and Max $|\mathcal{B}|$ indicate the largest instance where column generation converged. Gap BFD--LP reported as mean $\pm$ std over all converged sub-instances.}
+\label{tab:summary}
+\end{table}

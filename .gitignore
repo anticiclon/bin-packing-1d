@@ -1,0 +1,11 @@
+final_data/
+results/
+data/*.db
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+nohup.out
+data/*_configurations.csv
+results_v1/**/size_1520442_seed_0/*
+data/DS-4_blocks.csv

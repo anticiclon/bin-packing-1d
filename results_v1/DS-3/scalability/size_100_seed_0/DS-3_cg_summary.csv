@@ -1,0 +1,2 @@
+dataset_id,n_skus,n_blocks,n_bin_types,max_skus_per_bin,initialization_strategy,pricing_strategy,lower_bound_lp,upper_bound_initial,gap_pct,n_iterations,n_patterns_total,n_patterns_in_solution,runtime_s,total_item_volume,lp_efficiency,converged
+DS-3,100,107,24,4,bfd,per_type,1532531.9038978696,1944300.0,26.86848443773548,50,1939,102,256.35067558288574,1067623.557147751,69.66403468876165,True
