@@ -20,6 +20,8 @@ Data preparation  →  BFD heuristic  →  Column Generation  →  Restricted IP
 
 Scalability experiments (Table 6–7 and Figures in the paper) are run through a dedicated script that automates the full pipeline across multiple instance sizes and seeds.
 
+A standalone full-MILP script (`build_model.py`) is also included for benchmarking on small instances; it is not part of the CG + Restricted IP pipeline and is not imported by any other script.
+
 ---
 
 ## Requirements
@@ -43,13 +45,13 @@ bin-packing-1d/
 ├── code/
 │   ├── adding_blocks.py          # Stage 1a: aggregate SKU orders into blocks
 │   ├── create_configurations.py  # Stage 1b: enumerate feasible bin configurations
-│   ├── save_preprocessed_data.py # Stage 1c: save preprocessed data as Parquet
+│   ├── save_preprocessed_data.py # Stage 1c: save preprocessed data as Parquet + SQLite
 │   ├── bfd_heuristic.py          # Stage 2: Best-Fit-Decreasing heuristic
 │   ├── column_generation.py      # Stage 3: Column Generation (LP relaxation)
 │   ├── restricted_ip.py          # Stage 4: Restricted Integer Program
 │   ├── run_scalability.py        # Scalability experiments (all stages)
 │   ├── create_tables.py          # Generate tables and figures for the paper
-│   └── build_model.py            # Shared MILP building utilities
+│   └── build_model.py            # Standalone full-MILP model (not used by the CG+RIP pipeline)
 ├── data/
 │   ├── DS-1_skus.csv             # Dataset 1 (1,556 SKUs)
 │   ├── DS-2_skus.csv             # Dataset 2 (94,556 SKUs)
@@ -67,12 +69,12 @@ bin-packing-1d/
 The four datasets are anonymised extracts from Mercado Libre's warehouse operations.
 Each `DS-X_skus.csv` file contains one row per SKU with dimensions (length, width, height in cm) and demand.
 
-| Dataset | SKUs      | Blocks    | Country |
-|---------|-----------|-----------|---------|
-| DS-1    | 1,556     | 11,830    | —       |
-| DS-2    | 94,556    | 198,640   | —       |
-| DS-3    | 503,931   | 553,818   | —       |
-| DS-4    | 1,520,442 | 1,725,931 | —       |
+| Dataset | SKUs      |
+|---------|-----------|
+| DS-1    | 1,556     |
+| DS-2    | 94,556    |
+| DS-3    | 503,931   |
+| DS-4    | 1,520,442 |
 
 ---
 
@@ -92,7 +94,7 @@ for ds in DS-1 DS-2 DS-3 DS-4; do
 done
 ```
 
-> **Note:** The `.db` files produced by `save_preprocessed_data.py` can be safely deleted after this step to save disk space. Only the `.parquet` files are needed downstream.
+> **Note:** The `.db` files produced by `save_preprocessed_data.py` can be safely deleted after this step to save disk space. Only the three `.parquet` files (`_blocks.parquet`, `_bin_types.parquet`, `_X_optimal.parquet`) are needed downstream.
 
 ### Step 2 — Scalability experiments
 
@@ -131,7 +133,7 @@ Once all scalability CSVs are available, run:
 python create_tables.py
 ```
 
-This produces the `.tex` tables and `.pdf` figures referenced in the paper under `results/`.
+This produces the `.tex` tables and `.pdf` figures referenced in the paper, written next to the script in `code/` (see the script header to relocate the output directory).
 
 ---
 
@@ -141,14 +143,15 @@ This produces the `.tex` tables and `.pdf` figures referenced in the paper under
 
 ```bash
 python bfd_heuristic.py DS-1
-python bfd_heuristic.py DS-1 --m 4 --theta 0.05 --fit residual
+python bfd_heuristic.py DS-1 --m 4 --theta 0.05
 ```
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `--m` | Maximum SKUs per bin | 4 |
-| `--theta` | Bin-closing threshold | 0.05 |
-| `--fit` | Fit metric: `residual`, `volume`, `composite` | `residual` |
+| `--m` | Maximum number of distinct SKUs per bin | 4 |
+| `--theta` | Bin-closing threshold (fraction of `L_t` below which a bin's residual triggers closing) | 0.05 |
+
+The fit criterion (minimising residual X-length after insertion) is fixed and not configurable via CLI.
 
 Outputs: `results/DS-X/DS-X_bfd_solution.csv`, `_bfd_bins.csv`, `_bfd_report.txt`
 
@@ -156,30 +159,36 @@ Outputs: `results/DS-X/DS-X_bfd_solution.csv`, `_bfd_bins.csv`, `_bfd_report.txt
 
 ```bash
 python column_generation.py DS-1
-python column_generation.py DS-1 --init bfd --max_iter 5000
+python column_generation.py DS-1 --m 4 --init bfd --max_iter 5000
 ```
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `--init` | Initialisation: `bfd` or `singleton` | `bfd` |
-| `--pricing` | Pricing strategy: `per_type` or `combined` | `per_type` |
+| `--m` | Maximum number of distinct SKUs per bin | 4 |
+| `--max_skus` | Limit to N SKUs | None |
+| `--skus` | Comma-separated specific SKU list (overrides `--max_skus`) | None |
+| `--pricing` | Pricing strategy (currently only `per_type` is implemented) | `per_type` |
+| `--init` | Initialisation strategy: `bfd` or `singleton` | `bfd` |
+| `--verbose` | Verbosity level (0, 1, or 2) | 1 |
+| `--sp_time` | Time limit per pricing subproblem (s) | 60.0 |
 | `--max_iter` | Maximum CG iterations | 5000 |
-| `--sp_time` | Time limit per pricing subproblem (s) | 60 |
+| `--sp_max_blocks` | Top-K blocks per pricing subproblem (0 = no limit) | 0 |
+| `--log_interval` | Logging interval, in iterations | 5 |
 
 Outputs: `results/DS-X/DS-X_cg_solution.csv`, `_cg_summary.csv`, `_cg_duals.csv`
 
 ### Restricted Integer Program
 
-Requires Column Generation to have been run first.
+Requires Column Generation to have been run first (reads `DS-X_cg_solution.csv`).
 
 ```bash
 python restricted_ip.py DS-1
-python restricted_ip.py DS-1 --time_limit 3600 --mip_gap 0.001
+python restricted_ip.py DS-1 --time_limit 7200 --mip_gap 0.001
 ```
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `--time_limit` | Gurobi time limit (s) | 3600 |
+| `--time_limit` | Gurobi time limit (s) | 3600.0 |
 | `--mip_gap` | MIP optimality gap | 0.001 |
 
 Outputs: `results/DS-X/DS-X_rip_solution.csv`, `_rip_summary.csv`
